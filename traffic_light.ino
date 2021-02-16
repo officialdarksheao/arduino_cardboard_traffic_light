@@ -11,7 +11,7 @@
 // stay yellow for 3 seconds always
 
 #define MANUAL_MODE 0
-#define AUTO_SLOW 1
+#define SUPER_MANUAL 1
 #define AUTO_FAST 2
 #define RED_LIGHT_GREEN_LIGHT 3
 
@@ -107,7 +107,7 @@ void checkGameTimer(){
       // Serial.print("Time: ");
       // Serial.print(nextTimeToChange);
       // Serial.println(" Expired.");
-      int randomMultiplier = random(1,5); // number from 1 - 5 (works out to be 10-50 seconds green, 2-10 seconds red)
+      int randomMultiplier = random(1,4); // number from 1 - 4 (works out to be 3-12 seconds green, 1-4 seconds red)
       // time to change!
       if (state == 0){
         // we are on green, change to red, reset counter, and set next time to random multiple of red count
@@ -131,7 +131,31 @@ void checkGameTimer(){
 }
 
 void iterateGameCounter(){
-  countSinceChange++;
+  if (countSinceChange <= nextTimeToChange)
+  {
+    countSinceChange++;
+  }
+}
+
+
+void checkSuperManualButton() {
+  bool buttonPressed = (digitalRead(buttonPin) == HIGH);
+  if (buttonPressed && !buttonLastState)
+  {
+    buttonLastState = true;
+    // Serial.print("Button pressed");
+  }
+  if (!buttonPressed && buttonLastState){
+    // button was presseed and released, actually do the toggle of the light
+    // Serial.print("Button Released");
+    buttonLastState = false;
+    countSinceChange = 0;
+    state++;
+    if (state > 2){
+      state = 0;
+    }
+    nextTimeToChange = stayOnGreenCount;
+  }
 }
 
 void checkButton(){
@@ -187,18 +211,18 @@ void iterateCounter(){
 
 int determineMode(){
   if (digitalRead(mode1Pin) == HIGH){
-    stayOnGreenCount = 6000; // 30 seconds
-    stayOnRedCount = 6000; // 30 seconds
-    return AUTO_SLOW;
+    stayOnGreenCount = 100; // 0.5 seconds
+    stayOnRedCount = 100; // 0.5 seconds
+    return SUPER_MANUAL;
   }
   else if (digitalRead(mode2Pin) == HIGH){
-    stayOnGreenCount = 2000; // 10 seconds
-    stayOnRedCount = 2000; // 10 seconds
+    stayOnGreenCount = 1000; // 5 seconds
+    stayOnRedCount = 1000; // 5 seconds
     return AUTO_FAST;
   }
   else if (digitalRead(mode3Pin) == HIGH){
-    stayOnGreenCount = 2000; // 10 seconds
-    stayOnRedCount = 400; // 2 seconds
+    stayOnGreenCount = 600; // 3 seconds
+    stayOnRedCount = 200; // 1 seconds
     return RED_LIGHT_GREEN_LIGHT;
   }
   stayOnGreenCount = 200; // 1 second
@@ -243,11 +267,16 @@ void loop() {
     updateGameState();
     iterateGameCounter();
   }
-  else if (mode == AUTO_SLOW || mode == AUTO_FAST) {
+  else if (mode == AUTO_FAST) {
     // automatic changing
     checkTimer();
     updateState();
     iterateCounter();
+  }
+  else if (mode == SUPER_MANUAL) {
+    checkSuperManualButton();
+    updateState();
+    iterateGameCounter();
   }
   else {
     // manual
